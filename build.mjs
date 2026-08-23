@@ -12,6 +12,10 @@
  * factories served from a hashed boot graph, so runtime-shared npm imports
  * are not servable today; inlining at build time is the supported shape.
  *
+ * The plugin logo (`assets/icon.png`) is inlined as a base64 data URI and
+ * exposed to the client body as `MINDMAP_ICON_URI` — the served-bundle model
+ * has no asset route, so binary branding must ride inside the factory body.
+ *
  * MindElixir dist is self-contained ESM (no imports); we rewrite its single
  * `export { ... }` line into `module.exports = { ... }` and expose it on
  * `window.__DSH_MINDE_MINDELIXIR__` so the React canvas can reach it.
@@ -25,12 +29,13 @@ const root = __dirname;
 const srcClient = join(root, "src", "client", "index.js");
 const mindElixirDist = join(root, "node_modules", "mind-elixir", "dist", "MindElixir.js");
 const mindElixirCss = join(root, "node_modules", "mind-elixir", "dist", "MindElixir.css");
+const iconPng = join(root, "assets", "icon.png");
 const outFile = join(root, "lib", "client.js");
 
 const PLUGIN_ID = "dsh-mindmap-live";
 
 // --- Read inputs -----------------------------------------------------------
-for (const input of [srcClient, mindElixirDist, mindElixirCss]) {
+for (const input of [srcClient, mindElixirDist, mindElixirCss, iconPng]) {
   if (!existsSync(input)) {
     throw new Error(`missing input: ${input}\ninstall dependencies first: npm install  (or: pnpm install --ignore-workspace)`);
   }
@@ -38,6 +43,7 @@ for (const input of [srcClient, mindElixirDist, mindElixirCss]) {
 const clientBody = readFileSync(srcClient, "utf8");
 const meJs = readFileSync(mindElixirDist, "utf8");
 const meCss = readFileSync(mindElixirCss, "utf8");
+const iconUri = `data:image/png;base64,${readFileSync(iconPng).toString("base64")}`;
 
 // --- Rewrite MindElixir ESM -> CJS ----------------------------------------
 // Single export line: `export { s as DARK_THEME, ... cr as default, m as generateUUID };`
@@ -82,6 +88,9 @@ Object.assign(window.__DSH_MINDE_MINDELIXIR__, MindElixir);
   tag.textContent = ${JSON.stringify(meCss)};
   document.head.appendChild(tag);
 })();
+
+// Plugin logo as a data URI (see header comment).
+var MINDMAP_ICON_URI = ${JSON.stringify(iconUri)};
 
 ${clientBody}
 `;

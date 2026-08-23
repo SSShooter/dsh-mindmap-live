@@ -40,6 +40,12 @@ const PROJECTION_KEY = "mindmap";
 const RPC_CHANNEL = "/mindmap";
 const RPC_ENDPOINT = "update";
 
+/* global MINDMAP_ICON_URI */
+/**
+ * Plugin logo, injected by build.mjs (inlined base64 data URI of
+ * assets/icon.png) ahead of this body inside the same factory scope.
+ */
+
 /** Width presets for the docked panel. */
 const WIDTH_PRESETS = [
   { label: "窄", px: 360 },
@@ -289,14 +295,15 @@ function MindMapSession(props) {
         }
       },
       React.createElement(
-        "svg",
-        { width: 44, height: 44, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.4, opacity: 0.55, "aria-hidden": true },
-        React.createElement("circle", { cx: "12", cy: "12", r: "2.6" }),
-        React.createElement("circle", { cx: "4.5", cy: "6", r: "1.8" }),
-        React.createElement("circle", { cx: "19.5", cy: "6", r: "1.8" }),
-        React.createElement("circle", { cx: "4.5", cy: "18", r: "1.8" }),
-        React.createElement("circle", { cx: "19.5", cy: "18", r: "1.8" }),
-        React.createElement("path", { d: "M9.8 10.7L6 7.4M14.2 10.7L18 7.4M9.8 13.3L6 16.6M14.2 13.3L18 16.6" })
+        "img",
+        {
+          src: MINDMAP_ICON_URI,
+          alt: "",
+          draggable: false,
+          width: 56,
+          height: 56,
+          style: { borderRadius: "14px", opacity: 0.9 }
+        }
       ),
       React.createElement("div", { style: { fontSize: "14px", fontWeight: 600, color: "var(--dsw-alias-label-primary, inherit)" } }, "这个会话还没有思维导图"),
       React.createElement(
@@ -435,6 +442,14 @@ function MindMapDock(props) {
     React.createElement(
       "div",
       { style: headerStyle },
+      React.createElement("img", {
+        src: MINDMAP_ICON_URI,
+        alt: "",
+        draggable: false,
+        width: 18,
+        height: 18,
+        style: { borderRadius: "5px", flex: "none" }
+      }),
       React.createElement("strong", { style: { marginRight: "4px" } }, "思维导图"),
       WIDTH_PRESETS.map((p) =>
         React.createElement(
@@ -502,6 +517,14 @@ function MindMapOverlay(props) {
     React.createElement(
       "div",
       { style: headerStyle },
+      React.createElement("img", {
+        src: MINDMAP_ICON_URI,
+        alt: "",
+        draggable: false,
+        width: 18,
+        height: 18,
+        style: { borderRadius: "5px", flex: "none" }
+      }),
       React.createElement("strong", null, "实时思维导图"),
       currentId === undefined &&
         React.createElement("span", { style: { fontSize: "12px", opacity: 0.7 } }, "（无活动会话）"),
@@ -520,25 +543,59 @@ function MindMapOverlay(props) {
 // Sidebar toggle button
 // ---------------------------------------------------------------------------
 
-/** Sidebar footer action button toggling the docked panel. */
+/**
+ * Sidebar footer action button toggling the docked panel.
+ *
+ * Geometry mirrors the shell's settings trigger row (ui-settings-general
+ * `.VOzbGW_trigger` / `.VOzbGW_rail`): a full-width 42px rounded row with a
+ * 16px mark plus a label while the sidebar column is expanded (`wide`), and a
+ * centered 36x36 round rail button with an 18px mark when it is collapsed.
+ * State styling (hover, open-highlight) lives in the stylesheet injected by
+ * apply() under `[data-dsh-mindmap-toggle]`, so inline styles stay
+ * geometry-only: closed looks exactly like the settings control, open tints
+ * with the sidebar nav's active token.
+ */
 function MindMapButton(props) {
   const view = props.useStore((s) => s.view);
   const active = view !== "hidden";
+  // Slot props carry the sidebar shell's `wide` flag (expanded column vs
+  // collapsed 56px rail) — the same flag the settings trigger receives.
+  const wide = props.wide !== false;
   const onClick = () => props.actions.toggleDock();
 
   const buttonStyle = {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: props.wide ? 28 : 36,
-    height: props.wide ? 28 : 36,
-    margin: props.wide ? "0 2px" : "2px",
+    boxSizing: "border-box",
     cursor: "pointer",
-    background: active ? "var(--dsw-alias-interactive-bg-hover, rgba(0,0,0,0.06))" : "transparent",
+    display: "flex",
+    alignItems: "center",
+    flex: "none",
+    overflow: "hidden",
     border: "none",
-    borderRadius: "50%",
-    color: active ? "var(--dsw-alias-label-primary, inherit)" : "var(--dsw-alias-label-secondary, inherit)"
+    color: "var(--dsw-alias-label-primary, inherit)",
+    fontFamily: "inherit",
+    fontSize: "14px",
+    lineHeight: "22px",
+    transition: "background-color 0.15s var(--ds-ease-in-out, ease)"
   };
+  if (wide) {
+    Object.assign(buttonStyle, {
+      width: "calc(100% + 4px)",
+      height: "42px",
+      margin: "4px -2px",
+      padding: "0 10px 0 8px",
+      gap: "8px",
+      borderRadius: "12px"
+    });
+  } else {
+    Object.assign(buttonStyle, {
+      width: "36px",
+      height: "36px",
+      margin: "8px 0 10px",
+      padding: "0",
+      justifyContent: "center",
+      borderRadius: "50%"
+    });
+  }
 
   return React.createElement(
     "button",
@@ -546,18 +603,24 @@ function MindMapButton(props) {
       type: "button",
       title: active ? "关闭思维导图" : "打开思维导图（侧栏，可边聊边看）",
       "aria-label": active ? "关闭思维导图" : "打开思维导图",
+      "aria-pressed": active ? "true" : "false",
       "data-dsh-mindmap-toggle": "",
+      "data-dsh-mindmap-active": active ? "true" : "false",
       style: buttonStyle,
       onClick
     },
-    React.createElement(
-      "svg",
-      { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, "aria-hidden": true },
-      React.createElement("circle", { cx: "12", cy: "12", r: "3" }),
-      React.createElement("line", { x1: "12", y1: "9", x2: "12", y2: "3" }),
-      React.createElement("line", { x1: "12", y1: "15", x2: "12", y2: "21" }),
-      React.createElement("line", { x1: "9", y1: "12", x2: "3", y2: "12" }),
-      React.createElement("line", { x1: "15", y1: "12", x2: "21", y2: "12" })
+    React.createElement("img", {
+      src: MINDMAP_ICON_URI,
+      alt: "",
+      draggable: false,
+      width: wide ? 16 : 18,
+      height: wide ? 16 : 18,
+      style: { display: "block", flex: "none", borderRadius: wide ? "4px" : "5px" }
+    }),
+    wide && React.createElement(
+      "span",
+      { style: { whiteSpace: "nowrap", overflow: "hidden" } },
+      "思维导图"
     )
   );
 }
@@ -594,6 +657,11 @@ function apply(ctx) {
   // column never hides behind the panel. Hashed class names differ per build,
   // but the semantic suffix ("_centerCol") is stable — match on substring.
   // Narrow screens skip the shift; the panel simply floats above.
+  //
+  // The same tag also carries the sidebar toggle's state styling (see
+  // MindMapButton): closed it behaves exactly like the settings trigger
+  // (transparent, hover fill), open it tints with the sidebar nav's active
+  // token — the same highlight language settings uses for its active section.
   if (typeof document !== "undefined" && !document.getElementById("dsh-mindmap-live-layout")) {
     const styleEl = document.createElement("style");
     styleEl.id = "dsh-mindmap-live-layout";
@@ -604,6 +672,16 @@ function apply(ctx) {
       "}",
       "@media (max-width: 1023px) {",
       "  body[data-dsh-mindmap-dock] [class*=\"_centerCol\"] { padding-right: 0; }",
+      "}",
+      "button[data-dsh-mindmap-toggle] { background: transparent; }",
+      "button[data-dsh-mindmap-toggle]:hover {",
+      "  background: var(--dsw-alias-interactive-bg-hover);",
+      "}",
+      "button[data-dsh-mindmap-toggle][data-dsh-mindmap-active=\"true\"] {",
+      "  background: var(--dsw-specific-sidebar-nav-item-active, rgba(128,128,128,0.22));",
+      "}",
+      "button[data-dsh-mindmap-toggle][data-dsh-mindmap-active=\"true\"]:hover {",
+      "  background: var(--dsw-specific-sidebar-nav-item-hover, rgba(128,128,128,0.3));",
       "}"
     ].join("\n");
     document.head.appendChild(styleEl);

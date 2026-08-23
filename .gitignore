@@ -1,3 +1,7 @@
 node_modules/
 *.tgz
 .pack-cache/
+# verify-*.mjs screenshot output (path depends on the CWD they run from)
+.dsh-plugins/
+dock-*.png
+toggle-*.png
