@@ -1,0 +1,54 @@
+{
+  "name": "dsh-mindmap-live",
+  "version": "0.1.0",
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "dsh-client-plugin",
+    "mindmap",
+    "mind-elixir"
+  ],
+  "files": [
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "description": "DSH web plugin: a live, bidirectional mind map built on the mind-elixir-core kernel. The agent and the user edit the same tree in real time through a session projection and a Connection RPC channel.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-connection"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-connection": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-session-projection": "^0.1.0-rc.6",
+    "@deepseek-ai/cordis": "^4.0.1",
+    "react": "^18.2.0",
+    "zod": "^4.4.3"
+  },
+  "scripts": {
+    "build": "node build.mjs"
+  }
+}
