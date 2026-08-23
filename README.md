@@ -28,7 +28,7 @@ npx @deepseek-ai/dsh plugin --profile web add dsh-mindmap-live
 **B. Git 仓库**
 
 ```powershell
-npx @deepseek-ai/dsh plugin --profile web add git+https://github.com/<you>/dsh-mindmap-live.git
+npx @deepseek-ai/dsh plugin --profile web add git+https://github.com/SSShooter/dsh-mindmap-live.git
 ```
 
 > `lib/` 随仓库一起提交，git 安装开箱即用，不会触发 pnpm 的构建脚本审批。
@@ -63,11 +63,16 @@ npx @deepseek-ai/dsh web
 
 ## 从源码构建
 
-`lib/` 已预构建并内联 MindElixir 内核与样式，且随仓库一起提交——npm / git 方式安装后开箱即用，**无需**任何构建。如需修改 `src/` 后重建，请在本插件所属的 mind-elixir-core 仓库内进行（构建脚本读取 `../../dist/MindElixir.js|css`）：
+`lib/` 已预构建（内联 MindElixir 内核与样式）并随仓库一起提交——npm / git 方式安装后开箱即用，**无需**任何构建。
+
+如需修改 `src/` 后重建，在本目录内：
 
 ```powershell
-pnpm build   # 等价于 node build.mjs
+npm install     # 或 pnpm install --ignore-workspace
+pnpm build      # 等价于 node build.mjs，读取 node_modules/mind-elixir/dist
 ```
+
+MindElixir 内核来自 `devDependencies` 中的 npm 包 `mind-elixir`：升级时改版本号 → 重跑构建 → 发布新版插件，即可同步上游更新。
 
 ## 目录说明
 

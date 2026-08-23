@@ -2,6 +2,15 @@
   "name": "dsh-mindmap-live",
   "version": "0.1.0",
   "license": "MIT",
+  "author": "SSShooter",
+  "homepage": "https://github.com/SSShooter/dsh-mindmap-live#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SSShooter/dsh-mindmap-live.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SSShooter/dsh-mindmap-live/issues"
+  },
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -39,16 +48,19 @@
     }
   },
   "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-client-connection": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-connection": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-session-projection": "^0.1.0-rc.6",
-    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
     "react": "^18.2.0",
     "zod": "^4.4.3"
   },
   "scripts": {
     "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "mind-elixir": "^6.0.0-next.4"
   }
 }

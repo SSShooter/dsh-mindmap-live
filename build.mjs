@@ -6,24 +6,35 @@
  * with the MindElixir core (ESM dist) inlined as a CJS module and its CSS
  * injected as a `<style>` tag.
  *
+ * MindElixir comes from the npm `mind-elixir` devDependency (see
+ * package.json) — bump that version, re-run this script, and republish to
+ * pick up upstream updates. DSH client bundles are pre-built lazy-CJS
+ * factories served from a hashed boot graph, so runtime-shared npm imports
+ * are not servable today; inlining at build time is the supported shape.
+ *
  * MindElixir dist is self-contained ESM (no imports); we rewrite its single
  * `export { ... }` line into `module.exports = { ... }` and expose it on
  * `window.__DSH_MINDE_MINDELIXIR__` so the React canvas can reach it.
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = __dirname;
 const srcClient = join(root, "src", "client", "index.js");
-const mindElixirDist = join(root, "..", "..", "dist", "MindElixir.js");
-const mindElixirCss = join(root, "..", "..", "dist", "MindElixir.css");
+const mindElixirDist = join(root, "node_modules", "mind-elixir", "dist", "MindElixir.js");
+const mindElixirCss = join(root, "node_modules", "mind-elixir", "dist", "MindElixir.css");
 const outFile = join(root, "lib", "client.js");
 
 const PLUGIN_ID = "dsh-mindmap-live";
 
 // --- Read inputs -----------------------------------------------------------
+for (const input of [srcClient, mindElixirDist, mindElixirCss]) {
+  if (!existsSync(input)) {
+    throw new Error(`missing input: ${input}\ninstall dependencies first: npm install  (or: pnpm install --ignore-workspace)`);
+  }
+}
 const clientBody = readFileSync(srcClient, "utf8");
 const meJs = readFileSync(mindElixirDist, "utf8");
 const meCss = readFileSync(mindElixirCss, "utf8");
