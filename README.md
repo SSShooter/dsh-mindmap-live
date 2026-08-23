@@ -2,7 +2,7 @@
 
 DSH（DeepSeek Harness）Web 插件：基于 mind-elixir-core 内核的**实时双向思维导图**。Agent 与用户通过 session projection（`mindmap` 投影）和 Connection RPC 通道（`/mindmap`）实时共编同一棵树。
 
-![dsh-mindmap-live 界面截图](./screenshot.jpg)
+![dsh-mindmap-live 界面截图](https://github.com/SSShooter/dsh-mindmap-live/raw/main/screenshot.jpg)
 
 ## 功能
 
