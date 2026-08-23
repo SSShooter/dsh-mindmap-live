@@ -1,0 +1,6 @@
+# Shipped bundle patch — applied automatically when this package joins a
+# dsh profile's bundle layers (see `dsh.bundle.patch` in package.json).
+# Replaces the old manual loader entry in the profile's cordis.patch.yml.
+- insert:
+    - id: dsh-mindmap-live
+      name: dsh-mindmap-live

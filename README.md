@@ -20,7 +20,7 @@ DSH（DeepSeek Harness）Web 插件：基于 mind-elixir-core 内核的**实时�
 
 ## 安装
 
-统一入口是 `dsh plugin --profile web add <来源>`，按来源三选一：
+统一入口是 `dsh plugin --profile web add <来源>`，按来源三选一。插件自带 bundle 声明（`dsh.bundle.patch`），**安装完成即自动激活**——`dsh plugin` 会把它加入 profile 的 bundles 图层并自动插入 loader 入口，无需手动改任何配置：
 
 **A. npm（推荐）**
 
@@ -44,17 +44,11 @@ npx @deepseek-ai/dsh plugin --profile web add C:\下载路径\dsh-mindmap-live-0
 npx @deepseek-ai/dsh plugin --profile web add C:\下载路径\dsh-mindmap-live
 ```
 
-安装过程中出现 `warning: dsh-mindmap-live declares no dsh.bundle` 属正常——本插件是 client 插件而非 profile bundle，靠下一步的 loader 入口激活。
+## 激活
 
-## 激活：添加 loader 入口（必需）
+安装即激活，无需手动操作。
 
-编辑 `%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml`（没有则新建），追加：
-
-```yaml
-- insert:
-    - id: dsh-mindmap-live
-      name: dsh-mindmap-live
-```
+> **从旧版升级**：如果之前在 `%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml` 里手动添加过 loader 入口，升级后请删除该条目——新版会随包自动插入同 id 条目，两份并存可能重复加载。
 
 ## 启动验证
 
@@ -83,6 +77,7 @@ MindElixir 内核来自 `devDependencies` 中的 npm 包 `mind-elixir`：升级�
 | --- | --- |
 | `lib/index.js` | Host 侧插件：注册 `mindmap` 投影与 `/mindmap` RPC 通道 |
 | `lib/client.js` | 浏览器侧 bundle（ModuleLoader factory 格式，已内联 MindElixir） |
+| `dsh.bundle.patch.yml` | 随包 profile patch：安装时自动插入 loader 入口（配合 package.json 的 `dsh.bundle` 声明） |
 | `src/client/index.js` | 客户端源码 |
 | `build.mjs` | 构建脚本 |
 | `verify-auto-open.mjs` | 验证"agent 创建导图时自动弹出面板"（含刷新/编辑不弹出的反例） |
@@ -99,7 +94,7 @@ npm login
 npm publish
 ```
 
-npm 包只含 `files` 声明的内容（`lib/`、README、LICENSE）；完整源码以 GitHub 仓库为准。发布前无需额外打包步骤，`lib/` 是随仓库提交的产物。
+npm 包只含 `files` 声明的内容（`lib/`、`dsh.bundle.patch.yml`、README、LICENSE）；完整源码以 GitHub 仓库为准。发布前无需额外打包步骤，`lib/` 是随仓库提交的产物。
 
 ## License
 
