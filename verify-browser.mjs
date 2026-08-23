@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Browser-side verification for dsh-mindmap-live.
  *
  * Loads the web app, opens the mind map overlay for a seeded session, and
@@ -84,12 +84,12 @@ console.log("[check] boot includes dsh-mindmap-live:", boot.includesPlugin);
 console.log("[check] window.__DSH_MINDE_MINDELIXIR__ type:", boot.mindElixir);
 if (!boot.includesPlugin) throw new Error("plugin missing from boot manifest");
 
-// Open the overlay.
+// Open the docked panel (the sidebar toggle opens dock view since v2).
 await page.locator("[data-dsh-mindmap-toggle]").first().click();
 await page.waitForTimeout(2500);
 
 const state1 = await page.evaluate(() => {
-  const overlay = document.querySelector("[data-dsh-mindmap-overlay]");
+  const overlay = document.querySelector("[data-dsh-mindmap-dock-panel]");
   const canvas = document.querySelector("[data-dsh-mindmap-canvas]");
   return {
     hasOverlay: !!overlay,
@@ -101,7 +101,7 @@ const state1 = await page.evaluate(() => {
     topics: [...document.querySelectorAll("[data-dsh-mindmap-canvas] .me-tpc")].map((n) => n.textContent?.trim()).slice(0, 6)
   };
 });
-console.log("[check] overlay open:", state1.hasOverlay);
+console.log("[check] dock open:", state1.hasOverlay);
 console.log("[check] overlay text:", JSON.stringify(state1.overlayText));
 console.log("[check] slot anchors:", JSON.stringify(state1.slotAnchors));
 console.log("[check] slot errors:", JSON.stringify(state1.slotErrors));

@@ -2,9 +2,12 @@
 
 DSH（DeepSeek Harness）Web 插件：基于 mind-elixir-core 内核的**实时双向思维导图**。Agent 与用户通过 session projection（`mindmap` 投影）和 Connection RPC 通道（`/mindmap`）实时共编同一棵树。
 
+![dsh-mindmap-live 界面截图](./screenshot.jpg)
+
 ## 功能
 
 - 侧边栏底部按钮唤出思维导图；
+- **自动唤起**：agent 在当前会话中创建思维导图时，若面板处于关闭状态，停靠面板会自动弹出一次（仅"创建"触发——刷新页面、切换到已有导图的会话、以及对已有导图的后续修改都不会自动打开）；
 - 两种视图（同一时刻只渲染一个画布）：
   - **停靠面板**：常驻右侧，边聊天边看/编辑导图，聊天列自动让位，宽度可调（窄/中/宽）；
   - **全屏模式**：专注编辑；
@@ -82,7 +85,8 @@ MindElixir 内核来自 `devDependencies` 中的 npm 包 `mind-elixir`：升级�
 | `lib/client.js` | 浏览器侧 bundle（ModuleLoader factory 格式，已内联 MindElixir） |
 | `src/client/index.js` | 客户端源码 |
 | `build.mjs` | 构建脚本 |
-| `verify-*.mjs` | 开发期验证脚本，使用时无需关心 |
+| `verify-auto-open.mjs` | 验证"agent 创建导图时自动弹出面板"（含刷新/编辑不弹出的反例） |
+| `verify-*.mjs` | 其余开发期验证脚本，使用时无需关心 |
 
 ## 维护者：发版
 
