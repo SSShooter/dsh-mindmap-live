@@ -10,7 +10,7 @@
  *  5. manual toggle still works
  *
  * Run from the mind-elixir-core workspace root:
- *   node .dsh-plugins/dsh-mindmap-live/verify-auto-open.mjs [port]
+ *   node .dsh-plugins/dsh-mindmap-live/tests/verify-auto-open.mjs [port]
  */
 import { chromium } from "@playwright/test";
 import { rmSync } from "node:fs";

@@ -6,7 +6,8 @@
  *      and after the operation ("…" must never appear).
  *   3. After completion the buttons re-enable and the success note appears.
  * The desktop local service (127.0.0.1:6595/ping) is stalled ~3s so the
- * in-flight window is observable. Run against a live `dsh web`: node verify-busy-disabled.mjs [port]
+ * in-flight window is observable. Run from the mind-elixir-core workspace root,
+ * against a live `dsh web`: node .dsh-plugins/dsh-mindmap-live/tests/verify-busy-disabled.mjs [port]
  */
 import { chromium } from "@playwright/test";
 

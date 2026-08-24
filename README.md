@@ -22,8 +22,6 @@ DSH（DeepSeek Harness）Web 插件：基于 mind-elixir-core 内核的**实时�
 
 ## 安装
 
-统一入口是 `dsh plugin --profile web add <来源>`，按来源三选一。插件自带 bundle 声明（`dsh.bundle.patch`），**安装完成即自动激活**——`dsh plugin` 会把它加入 profile 的 bundles 图层并自动插入 loader 入口，无需手动改任何配置：
-
 **A. npm（推荐）**
 
 ```powershell
@@ -82,11 +80,11 @@ MindElixir 内核来自 `devDependencies` 中的 npm 包 `mind-elixir`：升级�
 | `dsh.bundle.patch.yml` | 随包 profile patch：安装时自动插入 loader 入口（配合 package.json 的 `dsh.bundle` 声明） |
 | `src/client/index.js` | 客户端源码 |
 | `build.mjs` | 构建脚本 |
-| `verify-auto-open.mjs` | 验证"agent 创建导图时自动弹出面板"（含刷新/编辑不弹出的反例） |
-| `verify-export-open.mjs` | 验证"下载图片"与"在桌面应用打开"两个插件按钮（mock 桌面端本地服务） |
-| `verify-*.mjs` | 其余开发期验证脚本，使用时无需关心 |
+| `tests/verify-auto-open.mjs` | 验证"agent 创建导图时自动弹出面板"（含刷新/编辑不弹出的反例） |
+| `tests/verify-export-open.mjs` | 验证"下载图片"与"在桌面应用打开"两个插件按钮（mock 桌面端本地服务） |
+| `tests/verify-*.mjs` | 其余开发期验证脚本（Playwright，需对着运行中的 `dsh web` 执行），使用时无需关心 |
 
-## 维护者：发版
+## 发布
 
 ```powershell
 # 1. 修改 src/ 后，在本插件所属的 mind-elixir-core 仓库内重新构建：

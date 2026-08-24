@@ -7,7 +7,7 @@
  *  2. A later RPC push (simulating an agent edit) refreshes the live canvas.
  *
  * Run from the mind-elixir-core workspace root (resolves @playwright/test):
- *   node .dsh-plugins/dsh-mindmap-live/verify-browser.mjs [port]
+ *   node .dsh-plugins/dsh-mindmap-live/tests/verify-browser.mjs [port]
  */
 import { chromium } from "@playwright/test";
 

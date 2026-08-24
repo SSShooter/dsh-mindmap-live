@@ -8,7 +8,8 @@
  *   3. Negative path: with 6595 unreachable, open-desktop times out and opens
  *      the desktop.mind-elixir.com download page (popup asserted, closed).
  *   4. Both buttons exist in the fullscreen overlay header too.
- * Run against a live `dsh web`:  node verify-export-open.mjs [port]
+ * Run from the mind-elixir-core workspace root, against a live `dsh web`:
+ *   node .dsh-plugins/dsh-mindmap-live/tests/verify-export-open.mjs [port]
  */
 import { chromium } from "@playwright/test";
 
