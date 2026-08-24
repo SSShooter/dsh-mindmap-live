@@ -19,6 +19,13 @@
  * MindElixir dist is self-contained ESM (no imports); we rewrite its single
  * `export { ... }` line into `module.exports = { ... }` and expose it on
  * `window.__DSH_MINDE_MINDELIXIR__` so the React canvas can reach it.
+ *
+ * The official plugins `@mind-elixir/export-mindmap` (image/JSON/Markdown
+ * download, SCST engine inlined) and `@mind-elixir/open-desktop` (launch the
+ * Mind Elixir Desktop app and hand over the tree) are inlined the same way:
+ * their UMD dists detect the surrounding `module`/`exports` and populate them
+ * in place, so each just needs a throwaway module scope. The client body
+ * reads them as `MINDMAP_EXPORT_PLUGIN` / `MINDMAP_OPEN_DESKTOP_PLUGIN`.
  */
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -29,13 +36,17 @@ const root = __dirname;
 const srcClient = join(root, "src", "client", "index.js");
 const mindElixirDist = join(root, "node_modules", "mind-elixir", "dist", "MindElixir.js");
 const mindElixirCss = join(root, "node_modules", "mind-elixir", "dist", "MindElixir.css");
+const pluginUmds = [
+  { global: "MINDMAP_EXPORT_PLUGIN", path: join(root, "node_modules", "@mind-elixir", "export-mindmap", "dist", "index.umd.cjs") },
+  { global: "MINDMAP_OPEN_DESKTOP_PLUGIN", path: join(root, "node_modules", "@mind-elixir", "open-desktop", "dist", "index.umd.cjs") }
+];
 const iconPng = join(root, "assets", "icon.png");
 const outFile = join(root, "lib", "client.js");
 
 const PLUGIN_ID = "dsh-mindmap-live";
 
 // --- Read inputs -----------------------------------------------------------
-for (const input of [srcClient, mindElixirDist, mindElixirCss, iconPng]) {
+for (const input of [srcClient, mindElixirDist, mindElixirCss, iconPng, ...pluginUmds.map((p) => p.path)]) {
   if (!existsSync(input)) {
     throw new Error(`missing input: ${input}\ninstall dependencies first: npm install  (or: pnpm install --ignore-workspace)`);
   }
@@ -43,6 +54,7 @@ for (const input of [srcClient, mindElixirDist, mindElixirCss, iconPng]) {
 const clientBody = readFileSync(srcClient, "utf8");
 const meJs = readFileSync(mindElixirDist, "utf8");
 const meCss = readFileSync(mindElixirCss, "utf8");
+for (const p of pluginUmds) p.body = readFileSync(p.path, "utf8");
 const iconUri = `data:image/png;base64,${readFileSync(iconPng).toString("base64")}`;
 
 // --- Rewrite MindElixir ESM -> CJS ----------------------------------------
@@ -65,6 +77,20 @@ const specList = exportMatch[1]
 const meCjs = meJs.replace(exportRe, `module.exports = { ${specList} };`);
 
 // --- Assemble the factory body --------------------------------------------
+// Official @mind-elixir plugins, each in its own module scope. Their UMD
+// wrapper takes the CJS branch (module/exports are defined here) and fills
+// exports in place; the client body consumes them via the globals below.
+let pluginsSection = "";
+for (const p of pluginUmds) {
+  pluginsSection +=
+    "var " + p.global + " = (function () {\n" +
+    "  var module = { exports: {} };\n" +
+    "  var exports = module.exports;\n" +
+    p.body + "\n" +
+    "  return module.exports;\n" +
+    "})();\n";
+}
+
 const factoryBody = `
 var MindElixir = (function () {
   var module = { exports: {} };
@@ -88,6 +114,9 @@ Object.assign(window.__DSH_MINDE_MINDELIXIR__, MindElixir);
   tag.textContent = ${JSON.stringify(meCss)};
   document.head.appendChild(tag);
 })();
+
+// Official @mind-elixir plugins (see pluginsSection above).
+${pluginsSection}
 
 // Plugin logo as a data URI (see header comment).
 var MINDMAP_ICON_URI = ${JSON.stringify(iconUri)};

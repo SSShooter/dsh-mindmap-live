@@ -14,6 +14,9 @@
  *    Exactly one view renders at a time, so there is always a single canvas.
  *    It also renders a headless session-scope watcher (`MindMapAutoOpen`)
  *    that stays mounted while the panel is hidden.
+ *  - Both view headers carry `MapActions`: download the live map as a PNG
+ *    (@mind-elixir/export-mindmap) and open it in the Mind Elixir Desktop app
+ *    (@mind-elixir/open-desktop).
  *
  * The views own a session-scope child slot that reads the host-computed
  * `mindmap` projection (`useProjection("mindmap")`). User edits on the canvas
@@ -40,10 +43,19 @@ const PROJECTION_KEY = "mindmap";
 const RPC_CHANNEL = "/mindmap";
 const RPC_ENDPOINT = "update";
 
-/* global MINDMAP_ICON_URI */
+/* global MINDMAP_ICON_URI, MINDMAP_EXPORT_PLUGIN, MINDMAP_OPEN_DESKTOP_PLUGIN */
 /**
  * Plugin logo, injected by build.mjs (inlined base64 data URI of
  * assets/icon.png) ahead of this body inside the same factory scope.
+ *
+ * Official @mind-elixir plugins, also inlined by build.mjs:
+ *  - MINDMAP_EXPORT_PLUGIN      (@mind-elixir/export-mindmap) — downloadImage
+ *    renders the live map via its built-in SCST engine (SVG foreignObject +
+ *    canvas) and triggers a browser download.
+ *  - MINDMAP_OPEN_DESKTOP_PLUGIN (@mind-elixir/open-desktop)  — launchMindElixir
+ *    wakes the Mind Elixir Desktop app (mind-elixir:// protocol), waits for
+ *    its local service and POSTs the tree; opens the download page when the
+ *    app is not installed.
  */
 
 /** Docked panel width: free-drag via the edge divider, clamped to these bounds. */
@@ -137,6 +149,14 @@ function normalizeIncomingTree(raw) {
 // Shared pieces
 // ---------------------------------------------------------------------------
 
+/**
+ * Registry of the live MindElixir instance. Exactly one canvas exists at any
+ * time (dock and fullscreen never render together), so a single slot is
+ * enough: MindElixirCanvas publishes on mount, clears on unmount, and the
+ * header action buttons read the instance at click time.
+ */
+const activeCanvas = { mind: null };
+
 /** Small icon button used across panel headers. */
 function HeaderButton(props) {
   return React.createElement(
@@ -196,6 +216,7 @@ function MindElixirCanvas(props) {
       theme: MindElixirCtor.THEME
     });
     mindRef.current = mind;
+    activeCanvas.mind = mind;
 
     const data = cloneTree(props.tree);
     lastPushedRef.current = data;
@@ -230,6 +251,7 @@ function MindElixirCanvas(props) {
       try { mind.bus.removeListener("operation", onOperation); } catch (e) { /* ignore */ }
       try { mind.bus.removeListener("expandNode", onOperation); } catch (e) { /* ignore */ }
       try { mind.destroy(); } catch (e) { /* ignore */ }
+      if (activeCanvas.mind === mind) activeCanvas.mind = null;
       mindRef.current = null;
     };
   }, []);
@@ -262,6 +284,110 @@ function MindElixirCanvas(props) {
       "data-dsh-mindmap-canvas": "",
       style: { width: "100%", height: "100%", overflow: "hidden", position: "relative" }
     }
+  );
+}
+
+/**
+ * Header action pair backed by the official @mind-elixir plugins:
+ *  - 下载图片: render the live canvas to PNG via export-mindmap's SCST engine
+ *    and trigger a browser download (named after the root topic).
+ *  - 在桌面应用打开: hand the current tree to Mind Elixir Desktop through
+ *    open-desktop (protocol wake-up + local service POST).
+ *
+ * Both act on the single live canvas via `activeCanvas`; while a plugin call
+ * is in flight the button shows an ellipsis and further clicks are ignored.
+ * A short-lived inline note reports success/failure without blocking UI.
+ */
+function MapActions() {
+  const [busy, setBusy] = React.useState(null);
+  const [note, setNote] = React.useState(null);
+  const noteTimerRef = React.useRef(null);
+
+  React.useEffect(() => () => {
+    if (noteTimerRef.current) clearTimeout(noteTimerRef.current);
+  }, []);
+
+  const flash = React.useCallback((kind, text) => {
+    setNote({ kind, text });
+    if (noteTimerRef.current) clearTimeout(noteTimerRef.current);
+    noteTimerRef.current = setTimeout(() => setNote(null), 4000);
+  }, []);
+
+  const onDownloadImage = async () => {
+    if (busy) return;
+    const mind = activeCanvas.mind;
+    if (!mind || typeof MINDMAP_EXPORT_PLUGIN === "undefined") {
+      flash("err", "画布尚未就绪");
+      return;
+    }
+    setBusy("png");
+    try {
+      await MINDMAP_EXPORT_PLUGIN.downloadImage(mind, "png");
+      flash("ok", "PNG 已开始下载");
+    } catch (e) {
+      console.error("[dsh-mindmap-live] image export failed", e);
+      flash("err", "导出失败" + (e && e.message ? "：" + e.message : ""));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onOpenDesktop = async () => {
+    if (busy) return;
+    const mind = activeCanvas.mind;
+    if (!mind || typeof MINDMAP_OPEN_DESKTOP_PLUGIN === "undefined") {
+      flash("err", "画布尚未就绪");
+      return;
+    }
+    let tree;
+    try {
+      tree = mind.getData();
+    } catch (e) {
+      flash("err", "读取导图失败");
+      return;
+    }
+    setBusy("desktop");
+    try {
+      await MINDMAP_OPEN_DESKTOP_PLUGIN.launchMindElixir(tree, window.location.href);
+      flash("ok", "已发送到桌面应用");
+    } catch (e) {
+      const msg = e && e.message ? e.message : String(e);
+      console.error("[dsh-mindmap-live] open-desktop failed", e);
+      flash("err", msg.indexOf("未安装") !== -1 ? "未安装桌面应用，已打开下载页" : "打开失败：" + msg);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return React.createElement(
+    React.Fragment,
+    null,
+    React.createElement(HeaderButton, {
+      title: "下载图片（PNG）",
+      onClick: onDownloadImage
+    }, busy === "png" ? "…" : "⬇ 图片"),
+    React.createElement(HeaderButton, {
+      title: "在桌面应用打开",
+      onClick: onOpenDesktop
+    }, busy === "desktop" ? "…" : "🖥 桌面"),
+    note && React.createElement(
+      "span",
+      {
+        role: "status",
+        style: {
+          fontSize: "11.5px",
+          lineHeight: 1.4,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          maxWidth: "180px",
+          color: note.kind === "err"
+            ? "var(--dsw-specific-danger, #e5484d)"
+            : "var(--dsw-alias-label-secondary, inherit)"
+        }
+      },
+      note.text
+    )
   );
 }
 
@@ -573,6 +699,7 @@ function MindMapDock(props) {
       }),
       React.createElement("strong", { style: { marginRight: "4px" } }, "思维导图"),
       React.createElement(HeaderButton, { title: "全屏模式", onClick: () => props.actions.showFull() }, "⤢"),
+      React.createElement(MapActions, null),
       currentId === undefined && React.createElement(
         "span",
         { style: { fontSize: "12px", opacity: 0.7 } }, "（无活动会话）"
@@ -637,6 +764,7 @@ function MindMapOverlay(props) {
       React.createElement("strong", null, "实时思维导图"),
       currentId === undefined &&
         React.createElement("span", { style: { fontSize: "12px", opacity: 0.7 } }, "（无活动会话）"),
+      React.createElement(MapActions, null),
       React.createElement(HeaderButton, { title: "回到侧栏模式", onClick: () => props.actions.showDock(), style: { marginLeft: "auto" } }, "⤡ 侧栏"),
       React.createElement(HeaderButton, { title: "关闭", onClick: () => props.actions.hide() }, "✕")
     ),

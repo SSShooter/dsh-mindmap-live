@@ -8,6 +8,8 @@ DSH（DeepSeek Harness）Web 插件：基于 mind-elixir-core 内核的**实时�
 
 - 侧边栏底部按钮唤出思维导图；
 - **自动唤起**：agent 在当前会话中创建思维导图时，若面板处于关闭状态，停靠面板会自动弹出一次（仅"创建"触发——刷新页面、切换到已有导图的会话、以及对已有导图的后续修改都不会自动打开）；
+- **下载图片**：面板/全屏标题栏一键把当前导图渲染成 PNG 并下载（基于官方 [@mind-elixir/export-mindmap](https://github.com/mind-elixir/plugins/tree/main/packages/export-mindmap) 插件内置的 SCST 引擎，SVG foreignObject + Canvas 管线，按根节点主题命名文件）；
+- **在桌面应用打开**：一键通过官方 [@mind-elixir/open-desktop](https://github.com/mind-elixir/plugins/tree/main/packages/open-desktop) 插件唤起 Mind Elixir Desktop（`mind-elixir://` 协议 + 本地服务 `127.0.0.1:6595`），把当前导图直接送进桌面端；未安装应用时自动打开下载页；
 - 两种视图（同一时刻只渲染一个画布）：
   - **停靠面板**：常驻右侧，边聊天边看/编辑导图，聊天列自动让位，拖拽左缘分界线自由调整宽度（双击分界线恢复默认宽度）；
   - **全屏模式**：专注编辑；
@@ -69,7 +71,7 @@ npm install     # 或 pnpm install --ignore-workspace
 pnpm build      # 等价于 node build.mjs，读取 node_modules/mind-elixir/dist
 ```
 
-MindElixir 内核来自 `devDependencies` 中的 npm 包 `mind-elixir`：升级时改版本号 → 重跑构建 → 发布新版插件，即可同步上游更新。
+MindElixir 内核来自 `devDependencies` 中的 npm 包 `mind-elixir`：升级时改版本号 → 重跑构建 → 发布新版插件，即可同步上游更新。「下载图片」「在桌面应用打开」两个功能同理，来自 `@mind-elixir/export-mindmap` 与 `@mind-elixir/open-desktop`（构建时内联其 UMD 产物）。
 
 ## 目录说明
 
@@ -81,6 +83,7 @@ MindElixir 内核来自 `devDependencies` 中的 npm 包 `mind-elixir`：升级�
 | `src/client/index.js` | 客户端源码 |
 | `build.mjs` | 构建脚本 |
 | `verify-auto-open.mjs` | 验证"agent 创建导图时自动弹出面板"（含刷新/编辑不弹出的反例） |
+| `verify-export-open.mjs` | 验证"下载图片"与"在桌面应用打开"两个插件按钮（mock 桌面端本地服务） |
 | `verify-*.mjs` | 其余开发期验证脚本，使用时无需关心 |
 
 ## 维护者：发版

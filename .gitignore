@@ -5,3 +5,4 @@ node_modules/
 .dsh-plugins/
 dock-*.png
 toggle-*.png
+export-open-*.png
