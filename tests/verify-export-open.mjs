@@ -49,7 +49,9 @@ await rpcUpdate(sessionId, tree);
 console.log("[seed]", sessionId);
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+// locale pinned: this spec asserts zh UI copy; without it headless Chromium
+// reports en-US and the plugin renders its English dictionary.
+const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, locale: "zh-CN" });
 const shots = (name) => page.screenshot({ path: `.dsh-plugins/dsh-mindmap-live/export-open-${name}.png` });
 const errors = [];
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });

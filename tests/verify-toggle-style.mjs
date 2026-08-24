@@ -18,7 +18,9 @@ if (!served.includes("var MINDMAP_ICON_URI")) throw new Error("served bundle is 
 console.log("[ok] served bundle carries the inlined icon");
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+// locale pinned: this spec asserts the zh toggle label; without it headless
+// Chromium reports en-US and the plugin renders its English dictionary.
+const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, locale: "zh-CN" });
 const errors = [];
 page.on("pageerror", (e) => errors.push(`PAGEERROR: ${e.message}`));
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });

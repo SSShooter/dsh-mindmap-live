@@ -62,7 +62,9 @@ const { sessionId } = await api("session.create", {});
 console.log("[seed] session:", sessionId);
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+// locale pinned: this spec clicks a button by its zh title; without it
+// headless Chromium reports en-US and the plugin renders its English dictionary.
+const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, locale: "zh-CN" });
 const errors = [];
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 page.on("pageerror", (e) => errors.push(`PAGEERROR: ${e.message}`));

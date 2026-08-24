@@ -18,6 +18,17 @@
  *    (@mind-elixir/export-mindmap) and open it in the Mind Elixir Desktop app
  *    (@mind-elixir/open-desktop).
  *
+ * i18n: all UI copy lives in the `mindmap.live` namespace of the shell locale
+ * registry (@deepseek-ai/dsh-client-locale). apply() registers the zh/en
+ * dictionaries and every slot entry declares `locale: NS`, so its component
+ * receives the framework-injected `t` seat — a translate function that reads
+ * the ACTIVE locale at call time and (because the renderer re-derives it per
+ * locale revision) keeps rendered text following live language switches.
+ * Nested components receive `t` by plain prop threading. Copy computed OUTSIDE
+ * the render path (canvas error fallbacks, data-repair labels) uses either the
+ * captured prop or the module-level bound translator (`dt`), so it speaks the
+ * language current at the moment it is produced.
+ *
  * The views own a session-scope child slot that reads the host-computed
  * `mindmap` projection (`useProjection("mindmap")`). User edits on the canvas
  * are pushed back over the `/mindmap` Connection RPC channel, which appends a
@@ -42,6 +53,100 @@ const AUTO_OPEN_SLOT = "dsh-mindmap-live.autoopen";
 const PROJECTION_KEY = "mindmap";
 const RPC_CHANNEL = "/mindmap";
 const RPC_ENDPOINT = "update";
+
+/** Locale namespace owning this plugin's UI copy (see header comment). */
+const NS = "mindmap.live";
+
+/**
+ * Simplified Chinese dictionary — the key-set source of truth. `en` below is
+ * checked complete against it; the locale registry enforces the same balance
+ * at register() time.
+ */
+const ZH_DICT = {
+  "sidebar.label": "思维导图",
+  "toggle.open.title": "打开思维导图（侧栏，可边聊边看）",
+  "toggle.close.title": "关闭思维导图",
+  "toggle.open.aria": "打开思维导图",
+  "toggle.close.aria": "关闭思维导图",
+  "dock.title": "思维导图",
+  "overlay.title": "实时思维导图",
+  "action.fullscreen.title": "全屏模式",
+  "action.dock.title": "回到侧栏模式",
+  "action.dock.label": "⤡ 侧栏",
+  "action.download.title": "下载图片（PNG）",
+  "action.download.label": "⬇ 图片",
+  "action.desktop.title": "在桌面应用打开",
+  "action.desktop.label": "🖥 桌面",
+  "action.close": "关闭",
+  "state.noSession": "（无活动会话）",
+  "empty.noSessionPanel": "请先打开一个会话以查看思维导图。",
+  "empty.heading": "这个会话还没有思维导图",
+  "empty.invite": "直接在对话里让我来画，例如：",
+  "empty.example": "“帮我画一张关于××的思维导图”",
+  "empty.hint": "创建后它会实时出现在这里，你的手动修改也会同步给 AI",
+  "resizer.title": "拖拽调整宽度，双击恢复默认",
+  "note.notReady": "画布尚未就绪",
+  "note.pngStarted": "PNG 已开始下载",
+  "note.exportFailed": "导出失败：{message}",
+  "note.readFailed": "读取导图失败",
+  "note.desktopSent": "已发送到桌面应用",
+  "note.desktopMissing": "未安装桌面应用，已打开下载页",
+  "note.desktopFailed": "打开失败：{message}",
+  "error.kernelMissing": "MindElixir 内核未加载",
+  "error.initFailed": "思维导图初始化失败，请刷新页面重试",
+  "data.rootTopic": "思维导图",
+  "data.unnamed": "（未命名）"
+};
+
+/** English dictionary, checked complete against the zh key set. */
+const EN_DICT = {
+  "sidebar.label": "Mind map",
+  "toggle.open.title": "Open mind map (docked — watch it while you chat)",
+  "toggle.close.title": "Close mind map",
+  "toggle.open.aria": "Open mind map",
+  "toggle.close.aria": "Close mind map",
+  "dock.title": "Mind Map",
+  "overlay.title": "Live Mind Map",
+  "action.fullscreen.title": "Fullscreen mode",
+  "action.dock.title": "Back to docked panel",
+  "action.dock.label": "⤡ Dock",
+  "action.download.title": "Download image (PNG)",
+  "action.download.label": "⬇ Image",
+  "action.desktop.title": "Open in desktop app",
+  "action.desktop.label": "🖥 Desktop",
+  "action.close": "Close",
+  "state.noSession": "(no active session)",
+  "empty.noSessionPanel": "Open a session to see its mind map.",
+  "empty.heading": "No mind map in this session yet",
+  "empty.invite": "Just ask me in the chat to draw one, e.g.:",
+  "empty.example": "“Draw me a mind map about X”",
+  "empty.hint": "Once created it appears here live, and your manual edits sync back to the AI",
+  "resizer.title": "Drag to resize, double-click to reset",
+  "note.notReady": "Canvas not ready yet",
+  "note.pngStarted": "PNG download started",
+  "note.exportFailed": "Export failed: {message}",
+  "note.readFailed": "Failed to read the map",
+  "note.desktopSent": "Sent to the desktop app",
+  "note.desktopMissing": "Desktop app not installed — opened its download page",
+  "note.desktopFailed": "Open failed: {message}",
+  "error.kernelMissing": "MindElixir kernel not loaded",
+  "error.initFailed": "Mind map failed to initialize — refresh the page and try again",
+  "data.rootTopic": "Mind Map",
+  "data.unnamed": "(untitled)"
+};
+
+/**
+ * Module-level bound translator for copy produced OUTSIDE the React render
+ * path (default-tree root topic, data-repair labels). Assigned in apply() from
+ * ctx.locale.bind(NS) — stable identity that reads the active locale at call
+ * time. Before apply() runs (and after unload) it degrades to the zh source
+ * strings, so the helpers stay usable standalone.
+ */
+let dataT = null;
+function dt(key) {
+  if (dataT) return dataT(key);
+  return Object.prototype.hasOwnProperty.call(ZH_DICT, key) ? ZH_DICT[key] : key;
+}
 
 /* global MINDMAP_ICON_URI, MINDMAP_EXPORT_PLUGIN, MINDMAP_OPEN_DESKTOP_PLUGIN */
 /**
@@ -97,7 +202,7 @@ function defaultTree() {
   return {
     nodeData: {
       id: "root",
-      topic: "思维导图",
+      topic: dt("data.rootTopic"),
       expanded: true,
       children: []
     },
@@ -147,11 +252,11 @@ function sanitizeNode(node, usedIds) {
   if (!node || typeof node !== "object" || Array.isArray(node)) {
     const fallbackId = "n" + ++sanitizeIdSeq;
     usedIds.push(fallbackId);
-    return { id: fallbackId, topic: "（未命名）", expanded: true, children: [] };
+    return { id: fallbackId, topic: dt("data.unnamed"), expanded: true, children: [] };
   }
   const out = Object.assign({}, node);
   if (typeof out.topic !== "string") out.topic = out.topic === void 0 || out.topic === null ? "" : String(out.topic);
-  if (out.topic.length === 0) out.topic = "（未命名）";
+  if (out.topic.length === 0) out.topic = dt("data.unnamed");
   if (typeof out.id !== "string" || out.id.length === 0 || usedIds.indexOf(out.id) !== -1) {
     let candidate;
     do { candidate = "n" + ++sanitizeIdSeq; } while (usedIds.indexOf(candidate) !== -1);
@@ -223,7 +328,7 @@ function normalizeIncomingTree(raw) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
   if (value.nodeData === null || typeof value.nodeData !== "object" || Array.isArray(value.nodeData)) return null;
   if (typeof value.nodeData.topic !== "string" || value.nodeData.topic.length === 0) {
-    value = { ...value, nodeData: { ...value.nodeData, topic: "（未命名）" } };
+    value = { ...value, nodeData: { ...value.nodeData, topic: dt("data.unnamed") } };
   }
   return value;
 }
@@ -288,7 +393,7 @@ function MindElixirCanvas(props) {
 
     const MindElixirCtor = window.__DSH_MINDE_MINDELIXIR__;
     if (!MindElixirCtor) {
-      el.textContent = "MindElixir 内核未加载";
+      el.textContent = props.t ? props.t("error.kernelMissing") : dt("error.kernelMissing");
       return undefined;
     }
 
@@ -375,7 +480,7 @@ function MindElixirCanvas(props) {
         if (JSON.stringify(data) !== fallback) {
           boot(defaultTree());
         } else {
-          el.textContent = "思维导图初始化失败，请刷新页面重试";
+          el.textContent = props.t ? props.t("error.initFailed") : dt("error.initFailed");
         }
       });
     };
@@ -425,17 +530,20 @@ function MindElixirCanvas(props) {
 
 /**
  * Header action pair backed by the official @mind-elixir plugins:
- *  - 下载图片: render the live canvas to PNG via export-mindmap's SCST engine
- *    and trigger a browser download (named after the root topic).
- *  - 在桌面应用打开: hand the current tree to Mind Elixir Desktop through
+ *  - Download image: render the live canvas to PNG via export-mindmap's SCST
+ *    engine and trigger a browser download (named after the root topic).
+ *  - Open in desktop app: hand the current tree to Mind Elixir Desktop through
  *    open-desktop (protocol wake-up + local service POST).
  *
  * Both act on the single live canvas via `activeCanvas`; while a plugin call
  * is in flight both buttons are disabled (dimmed, label unchanged) so no
  * second export/launch can start. A short-lived inline note reports
- * success/failure without blocking UI.
+ * success/failure without blocking UI; notes are stored as dictionary keys +
+ * template params and translated at render time, so even a note flashed right
+ * before a language switch renders in the new language.
  */
-function MapActions() {
+function MapActions(props) {
+  const t = props.t;
   const [busy, setBusy] = React.useState(null);
   const [note, setNote] = React.useState(null);
   const noteTimerRef = React.useRef(null);
@@ -444,8 +552,8 @@ function MapActions() {
     if (noteTimerRef.current) clearTimeout(noteTimerRef.current);
   }, []);
 
-  const flash = React.useCallback((kind, text) => {
-    setNote({ kind, text });
+  const flash = React.useCallback((kind, key, params) => {
+    setNote({ kind, key, params });
     if (noteTimerRef.current) clearTimeout(noteTimerRef.current);
     noteTimerRef.current = setTimeout(() => setNote(null), 4000);
   }, []);
@@ -454,16 +562,16 @@ function MapActions() {
     if (busy) return;
     const mind = activeCanvas.mind;
     if (!mind || typeof MINDMAP_EXPORT_PLUGIN === "undefined") {
-      flash("err", "画布尚未就绪");
+      flash("err", "note.notReady");
       return;
     }
     setBusy("png");
     try {
       await MINDMAP_EXPORT_PLUGIN.downloadImage(mind, "png");
-      flash("ok", "PNG 已开始下载");
+      flash("ok", "note.pngStarted");
     } catch (e) {
       console.error("[dsh-mindmap-live] image export failed", e);
-      flash("err", "导出失败" + (e && e.message ? "：" + e.message : ""));
+      flash("err", "note.exportFailed", { message: e && e.message ? e.message : String(e) });
     } finally {
       setBusy(null);
     }
@@ -473,24 +581,30 @@ function MapActions() {
     if (busy) return;
     const mind = activeCanvas.mind;
     if (!mind || typeof MINDMAP_OPEN_DESKTOP_PLUGIN === "undefined") {
-      flash("err", "画布尚未就绪");
+      flash("err", "note.notReady");
       return;
     }
     let tree;
     try {
       tree = mind.getData();
     } catch (e) {
-      flash("err", "读取导图失败");
+      flash("err", "note.readFailed");
       return;
     }
     setBusy("desktop");
     try {
       await MINDMAP_OPEN_DESKTOP_PLUGIN.launchMindElixir(tree, window.location.href);
-      flash("ok", "已发送到桌面应用");
+      flash("ok", "note.desktopSent");
     } catch (e) {
       const msg = e && e.message ? e.message : String(e);
       console.error("[dsh-mindmap-live] open-desktop failed", e);
-      flash("err", msg.indexOf("未安装") !== -1 ? "未安装桌面应用，已打开下载页" : "打开失败：" + msg);
+      // The upstream plugin throws fixed zh copy; detect its not-installed
+      // error by that substring regardless of the UI language.
+      flash(
+        "err",
+        msg.indexOf("未安装") !== -1 ? "note.desktopMissing" : "note.desktopFailed",
+        { message: msg }
+      );
     } finally {
       setBusy(null);
     }
@@ -500,15 +614,15 @@ function MapActions() {
     React.Fragment,
     null,
     React.createElement(HeaderButton, {
-      title: "下载图片（PNG）",
+      title: t("action.download.title"),
       disabled: busy !== null,
       onClick: onDownloadImage
-    }, "⬇ 图片"),
+    }, t("action.download.label")),
     React.createElement(HeaderButton, {
-      title: "在桌面应用打开",
+      title: t("action.desktop.title"),
       disabled: busy !== null,
       onClick: onOpenDesktop
-    }, "🖥 桌面"),
+    }, t("action.desktop.label")),
     note && React.createElement(
       "span",
       {
@@ -525,13 +639,14 @@ function MapActions() {
             : "var(--dsw-alias-label-secondary, inherit)"
         }
       },
-      note.text
+      t(note.key, note.params)
     )
   );
 }
 
 /** Session-scope child: receives useSession, useProjection, sessionId, connection. */
 function MindMapSession(props) {
+  const t = props.t;
   const rawTree = props.useProjection(PROJECTION_KEY);
   const tree = React.useMemo(() => normalizeIncomingTree(rawTree), [rawTree]);
   const sessionId = props.sessionId;
@@ -577,27 +692,27 @@ function MindMapSession(props) {
           style: { borderRadius: "14px", opacity: 0.9 }
         }
       ),
-      React.createElement("div", { style: { fontSize: "14px", fontWeight: 600, color: "var(--dsw-alias-label-primary, inherit)" } }, "这个会话还没有思维导图"),
+      React.createElement("div", { style: { fontSize: "14px", fontWeight: 600, color: "var(--dsw-alias-label-primary, inherit)" } }, t("empty.heading")),
       React.createElement(
         "div",
         { style: { fontSize: "12.5px", lineHeight: 1.7, opacity: 0.85 } },
-        "直接在对话里让我来画，例如：",
+        t("empty.invite"),
         React.createElement("br"),
         React.createElement(
           "span",
           { style: { opacity: 0.95 } },
-          "“帮我画一张关于××的思维导图”"
+          t("empty.example")
         )
       ),
       React.createElement(
         "div",
         { style: { fontSize: "11.5px", opacity: 0.6 } },
-        "创建后它会实时出现在这里，你的手动修改也会同步给 AI"
+        t("empty.hint")
       )
     );
   }
 
-  return React.createElement(MindElixirCanvas, { tree, visible: true, onUserEdit: pushEdit });
+  return React.createElement(MindElixirCanvas, { tree, visible: true, onUserEdit: pushEdit, t });
 }
 
 /**
@@ -655,7 +770,7 @@ function panelBody(props) {
     return React.createElement(
       "div",
       { style: { color: "inherit", opacity: 0.7, fontSize: "13px" } },
-      "请先打开一个会话以查看思维导图。"
+      props.t("empty.noSessionPanel")
     );
   }
   return props.renderSlot(SESSION_SLOT, {});
@@ -726,7 +841,7 @@ function DockResizer(props) {
     "div",
     {
       "data-dsh-mindmap-resizer": "",
-      title: "拖拽调整宽度，双击恢复默认",
+      title: props.t("resizer.title"),
       "aria-orientation": "vertical",
       onPointerDown,
       onDoubleClick: () => props.onCommit(DEFAULT_WIDTH),
@@ -761,6 +876,7 @@ function DockResizer(props) {
 }
 
 function MindMapDock(props) {
+  const t = props.t;
   const view = props.useStore((s) => s.view);
   const width = props.useStore((s) => s.width);
   const currentId = props.useSessions((s) => s.current);
@@ -821,6 +937,7 @@ function MindMapDock(props) {
     "div",
     { ref: panelRef, "data-dsh-mindmap-dock-panel": "", style: panelStyle },
     React.createElement(DockResizer, {
+      t,
       getWidth: () => effWidth,
       onPreview: previewDragWidth,
       onCommit: (w) => props.actions.setWidth(w)
@@ -836,23 +953,23 @@ function MindMapDock(props) {
         height: 18,
         style: { borderRadius: "5px", flex: "none" }
       }),
-      React.createElement("strong", { style: { marginRight: "4px" } }, "思维导图"),
-      React.createElement(HeaderButton, { title: "全屏模式", onClick: () => props.actions.showFull() }, "⤢"),
-      React.createElement(MapActions, null),
+      React.createElement("strong", { style: { marginRight: "4px" } }, t("dock.title")),
+      React.createElement(HeaderButton, { title: t("action.fullscreen.title"), onClick: () => props.actions.showFull() }, "⤢"),
+      React.createElement(MapActions, { t }),
       currentId === undefined && React.createElement(
         "span",
-        { style: { fontSize: "12px", opacity: 0.7 } }, "（无活动会话）"
+        { style: { fontSize: "12px", opacity: 0.7 } }, t("state.noSession")
       ),
       React.createElement(
         HeaderButton,
-        { title: "关闭", onClick: () => props.actions.hide(), style: { marginLeft: "auto" } },
+        { title: t("action.close"), onClick: () => props.actions.hide(), style: { marginLeft: "auto" } },
         "✕"
       )
     ),
     React.createElement(
       "div",
       { style: bodyStyle },
-      panelBody({ currentId, renderSlot: props.renderSlot })
+      panelBody({ currentId, renderSlot: props.renderSlot, t })
     )
   );
 }
@@ -862,6 +979,7 @@ function MindMapDock(props) {
 // ---------------------------------------------------------------------------
 
 function MindMapOverlay(props) {
+  const t = props.t;
   const view = props.useStore((s) => s.view);
   const currentId = props.useSessions((s) => s.current);
 
@@ -900,17 +1018,17 @@ function MindMapOverlay(props) {
         height: 18,
         style: { borderRadius: "5px", flex: "none" }
       }),
-      React.createElement("strong", null, "实时思维导图"),
+      React.createElement("strong", null, t("overlay.title")),
       currentId === undefined &&
-        React.createElement("span", { style: { fontSize: "12px", opacity: 0.7 } }, "（无活动会话）"),
-      React.createElement(MapActions, null),
-      React.createElement(HeaderButton, { title: "回到侧栏模式", onClick: () => props.actions.showDock(), style: { marginLeft: "auto" } }, "⤡ 侧栏"),
-      React.createElement(HeaderButton, { title: "关闭", onClick: () => props.actions.hide() }, "✕")
+        React.createElement("span", { style: { fontSize: "12px", opacity: 0.7 } }, t("state.noSession")),
+      React.createElement(MapActions, { t }),
+      React.createElement(HeaderButton, { title: t("action.dock.title"), onClick: () => props.actions.showDock(), style: { marginLeft: "auto" } }, t("action.dock.label")),
+      React.createElement(HeaderButton, { title: t("action.close"), onClick: () => props.actions.hide() }, "✕")
     ),
     React.createElement(
       "div",
       { style: bodyStyle },
-      panelBody({ currentId, renderSlot: props.renderSlot })
+      panelBody({ currentId, renderSlot: props.renderSlot, t })
     )
   );
 }
@@ -932,6 +1050,7 @@ function MindMapOverlay(props) {
  * with the sidebar nav's active token.
  */
 function MindMapButton(props) {
+  const t = props.t;
   const view = props.useStore((s) => s.view);
   const active = view !== "hidden";
   // Slot props carry the sidebar shell's `wide` flag (expanded column vs
@@ -977,8 +1096,8 @@ function MindMapButton(props) {
     "button",
     {
       type: "button",
-      title: active ? "关闭思维导图" : "打开思维导图（侧栏，可边聊边看）",
-      "aria-label": active ? "关闭思维导图" : "打开思维导图",
+      title: active ? t("toggle.close.title") : t("toggle.open.title"),
+      "aria-label": active ? t("toggle.close.aria") : t("toggle.open.aria"),
       "aria-pressed": active ? "true" : "false",
       "data-dsh-mindmap-toggle": "",
       "data-dsh-mindmap-active": active ? "true" : "false",
@@ -996,7 +1115,7 @@ function MindMapButton(props) {
     wide && React.createElement(
       "span",
       { style: { whiteSpace: "nowrap", overflow: "hidden" } },
-      "思维导图"
+      t("sidebar.label")
     )
   );
 }
@@ -1007,6 +1126,16 @@ function MindMapButton(props) {
 
 function apply(ctx) {
   const uiStore = createUiStore();
+
+  // i18n (see header comment): register this plugin's dictionaries with the
+  // shell locale registry and bind a namespace translator. The bound function
+  // reads the ACTIVE locale at call time, so registration-time text (the slot
+  // label thunk) follows language switches without re-registration; rendered
+  // copy refreshes through the framework `t` seat each entry declares below.
+  // The disposer drops the dictionaries when this fiber unloads.
+  ctx.effect(() => ctx.locale.register(NS, { zh: ZH_DICT, en: EN_DICT }), "dsh-mindmap-live: dictionaries");
+  const t = ctx.locale.bind(NS);
+  dataT = t;
 
   // The view-mode store is registered once under the ROOT scope (by the
   // sidebar button and the overlay entries); slots enforce "one handle, one
@@ -1073,7 +1202,8 @@ function apply(ctx) {
         name: "sidebar.footer.action",
         id: OVERLAY_ID,
         order: 10,
-        label: () => "思维导图",
+        label: () => t("sidebar.label"),
+        locale: NS,
         store: uiStore
       },
       MindMapButton
@@ -1086,6 +1216,7 @@ function apply(ctx) {
         name: "shell.overlay",
         id: OVERLAY_ID,
         order: 10,
+        locale: NS,
         store: uiStore,
         children: {
           [SESSION_SLOT]: { kind: "single", scope: "session" },
@@ -1111,6 +1242,7 @@ function apply(ctx) {
       {
         name: SESSION_SLOT,
         priority: 0,
+        locale: NS,
         inject: () => ({ connection: ctx.get("connection") })
       },
       MindMapSession
@@ -1129,4 +1261,4 @@ function apply(ctx) {
   );
 }
 
-module.exports = { apply, inject: ["slots", "sessions", "connection"] };
+module.exports = { apply, inject: ["slots", "sessions", "connection", "locale"] };
